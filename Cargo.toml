@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 fun_wgpu = { path = "fun_wgpu" }
+bytemuck = { version = "1.24", features = [ "derive" ] }

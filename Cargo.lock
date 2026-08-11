@@ -470,6 +470,7 @@ dependencies = [
 name = "fun_with_squares"
 version = "0.1.0"
 dependencies = [
+ "bytemuck",
  "fun_wgpu",
 ]
 
