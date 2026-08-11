@@ -9,4 +9,5 @@ This game is early in development, so I want to make a list of what I have finis
 I will update it continually until the game is at a point where a simple changelog for each version would be better.
 Current Progress:
  - Window
- - Rendering (WIP since I have never done low-level GPU programming before.)
+ - Basic Rendering (Drawing at all since it has a lot of boilerplate)
+ - More Rendering (WIP)
