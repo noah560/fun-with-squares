@@ -1,0 +1,22 @@
+# The linker settings here work on my
+# device and right now I'm focusing
+# on the game development.
+# If you want to build it easily yourself,
+# remove this and use the default configuration.
+
+[target.x86_64-pc-windows-gnu]
+linker = "x86_64-w64-mingw32-gcc"
+
+[target.x86_64-unknown-linux-gnu]
+linker = "x86_64-linux-gnu-gcc"
+
+[target.aarch64-unknown-linux-gnu]
+linker = "gcc"
+
+# [target.x86_64-apple-darwin]
+# linker = "zig"
+# rustflags = ["cc", "-C", "link-arg=-target", "-C", "link-arg=x86_64-macos-none"]  
+
+# [target.aarch64-apple-darwin]
+# linker = "zig"
+# rustflags = ["cc", "-C", "link-arg=-target", "-C", "link-arg=aarch64-macos-none"]   
