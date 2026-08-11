@@ -41,7 +41,7 @@ pub trait App: Sized {
     /// Update game logic
     fn update(&mut self);
     /// Render the window
-    fn render(&mut self);
+    fn render(&mut self) -> anyhow::Result<()>;
 }
 
 /// A wrapper for an `App` with the functionality required by winit.
@@ -89,7 +89,7 @@ impl<A: App + 'static> ApplicationHandler<A> for Wrapper<A> {
                 event_loop.set_control_flow(ControlFlow::WaitUntil(
                     Instant::now() + Duration::from_millis(1000_u64 / state.get_fps())
                 ));
-                state.render();
+                state.render().expect("Error rendering!");
             }
             WindowEvent::KeyboardInput {
                 event: KeyEvent {
@@ -117,7 +117,9 @@ impl<A: App + 'static> ApplicationHandler<A> for Wrapper<A> {
         cause: StartCause
     ) {
         match cause {
-            StartCause::ResumeTimeReached { .. } => self.app.get_window().request_redraw(),
+            StartCause::ResumeTimeReached {
+                ..
+            } => self.app.as_mut().unwrap().get_window().request_redraw(),
             _ => {}
         }
     }

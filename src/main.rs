@@ -24,7 +24,7 @@ impl App for FunWithSquares {
     // Compatibility
     fn get_window(&mut self) -> &mut Arc<Window> {&mut self.window}
     async fn new(window: Arc<Window>) -> anyhow::Result<Self> {
-        let size = window::inner_size();
+        let size = window.inner_size();
 
         // Get the GPU handle
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
@@ -49,7 +49,7 @@ impl App for FunWithSquares {
                 label: None,
                 required_features: wgpu::Features::empty(),
                 experimental_features: wgpu::ExperimentalFeatures::disabled(),
-                required_limits: wgpu::Limits::default(),
+                required_limits: wgpu::Limits::downlevel_defaults(),
                 memory_hints: Default::default(),
                 trace: wgpu::Trace::Off,
             })
@@ -97,10 +97,67 @@ impl App for FunWithSquares {
     // Main loop
     fn get_fps(&self) -> u64 {30}
     fn update(&mut self) {}
-    fn render(&mut self) {}
+    fn render(&mut self) -> anyhow::Result<()> {
+        if !self.is_surface_configured {
+            return Ok(());
+        }
+        let output = match self.surface.get_current_texture() {
+            wgpu::CurrentSurfaceTexture::Success(surface_texture) => surface_texture,
+            wgpu::CurrentSurfaceTexture::Suboptimal(surface_texture) => surface_texture,
+            wgpu::CurrentSurfaceTexture::Timeout |
+            wgpu::CurrentSurfaceTexture::Occluded |
+            wgpu::CurrentSurfaceTexture::Validation => return Ok(()),
+            wgpu::CurrentSurfaceTexture::Outdated => {
+                self.surface.configure(&self.device, &self.config);
+                return Ok(());
+            }
+            wgpu::CurrentSurfaceTexture::Lost => {
+                anyhow::bail!("Lost GPU device!");
+            }
+        };
+        let view = output.texture.create_view(
+            &wgpu::TextureViewDescriptor::default()
+        );
+        let mut encoder = self.device.create_command_encoder(
+            &wgpu::CommandEncoderDescriptor {
+                label: Some("Render Encoder")
+            }
+        );
+
+        {
+            let _render_pass = encoder.begin_render_pass(
+                &wgpu::RenderPassDescriptor {
+                    label: Some("Render Pass"),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: &view,
+                        resolve_target: None,
+                        depth_slice: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color {
+                                r: 0.1,
+                                g: 0.2,
+                                b: 0.3,
+                                a: 1.0,
+                            }),
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    depth_stencil_attachment: None,
+                    occlusion_query_set: None,
+                    timestamp_writes: None,
+                    multiview_mask: None,
+                }
+            );
+        }
+
+        self.queue.submit(std::iter::once(encoder.finish()));
+        self.queue.present(output);
+
+        Ok(())
+    }
 }
 
 fn main() {
-    println!("Hello, World!");
+    println!("Fun with Squares!");
     run::<FunWithSquares>().expect("Error running app!");
 }
