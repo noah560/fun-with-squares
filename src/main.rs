@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use fun_wgpu::wgpu::util::DeviceExt;
+use std::time::{Instant};
 
 use fun_wgpu::{
     App,
@@ -12,6 +13,12 @@ use fun_wgpu::{
 };
 
 use bytemuck;
+
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct Uniforms {
+    time: f32,
+}
 
 struct FunWithSquares {
     window: Arc<Window>,
@@ -26,7 +33,12 @@ struct FunWithSquares {
 
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
+    uniform_buffer: wgpu::Buffer,
+    bind_group: wgpu::BindGroup,
     num_indices: u32,
+
+    time_passed: f32,
+    last_frame: Instant,
 }
 
 #[repr(C)]
@@ -127,10 +139,62 @@ impl App for FunWithSquares {
             source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into())
         });
 
+        let vertex_buffer = device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("Vertex Buffer"),
+                contents: bytemuck::cast_slice(VERTICES),
+                usage: wgpu::BufferUsages::VERTEX,
+            }
+        );
+        let index_buffer = device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("Index Buffer"),
+                contents: bytemuck::cast_slice(INDICES),
+                usage: wgpu::BufferUsages::INDEX,
+            }
+        );
+        let num_indices = INDICES.len() as u32;
+        let uniform_buffer = device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("Uniform Buffer"),
+                contents: bytemuck::cast_slice(&[Uniforms {
+                    time: 0.0
+                }]),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            }
+        );
+
+        let bind_group_layout = device.create_bind_group_layout(
+            &wgpu::BindGroupLayoutDescriptor {
+                label: Some("Main Bind Group Layout"),
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None
+                    },
+                    count: None,
+                }]
+            }
+        );
+
+        let bind_group = device.create_bind_group(
+            &wgpu::BindGroupDescriptor {
+                layout: &bind_group_layout,
+                entries: &[wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: uniform_buffer.as_entire_binding()
+                }],
+                label: Some("Main bind group")
+            }
+        );
+
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[],
+                bind_group_layouts: &[Some(&bind_group_layout)],
                 immediate_size: 0,
             });
 
@@ -178,22 +242,6 @@ impl App for FunWithSquares {
                 }
             );
 
-        let vertex_buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("Vertex Buffer"),
-                contents: bytemuck::cast_slice(VERTICES),
-                usage: wgpu::BufferUsages::VERTEX,
-            }
-        );
-        let index_buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("Index Buffer"),
-                contents: bytemuck::cast_slice(INDICES),
-                usage: wgpu::BufferUsages::INDEX,
-            }
-        );
-        let num_indices = INDICES.len() as u32;
-
         window.set_title("Fun with Squares!");
         Ok(Self {
             window,
@@ -208,7 +256,12 @@ impl App for FunWithSquares {
 
             vertex_buffer,
             index_buffer,
+            uniform_buffer,
+            bind_group,
             num_indices,
+
+            time_passed: 0.0,
+            last_frame: Instant::now(),
         })
     }
     // Events
@@ -227,6 +280,10 @@ impl App for FunWithSquares {
     fn get_fps(&self) -> u64 {30}
     fn update(&mut self) {}
     fn render(&mut self) -> anyhow::Result<()> {
+        let now = Instant::now();
+        let dt = (now - self.last_frame).as_secs_f32().min(1.0);
+        self.last_frame = now;
+        self.time_passed += dt;
         if !self.is_surface_configured {
             return Ok(());
         }
@@ -254,6 +311,9 @@ impl App for FunWithSquares {
         );
 
         {
+            self.queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[Uniforms {
+                time: self.time_passed
+            }]));
             let mut render_pass = encoder.begin_render_pass(
                 &wgpu::RenderPassDescriptor {
                     label: Some("Render Pass"),
@@ -281,6 +341,7 @@ impl App for FunWithSquares {
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+            render_pass.set_bind_group(0, &self.bind_group, &[]);
             render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
         }
 

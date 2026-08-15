@@ -62,7 +62,7 @@ impl<A: App + 'static> ApplicationHandler<A> for Wrapper<A> {
     /// Runs when the app is opened (The naming is weird).
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         #[allow(unused_mut)]
-        let mut window_attributes = Window::default_attributes();
+        let mut window_attributes = Window::default_attributes().with_inner_size(winit::dpi::LogicalSize::new(400.0, 300.0));
         let window = Arc::new(event_loop.create_window(window_attributes).expect("Failed to create window!"));
         self.app = Some(pollster::block_on(A::new(window)).expect("Failed to create window!"));
     }
