@@ -5,6 +5,9 @@ struct Uniforms {
 @group(0) @binding(0)
 var<uniform> uniforms: Uniforms;
 
+@group(0) @binding(1)
+var world_tex: texture_3d<u32>;
+
 struct VertexInput {
     @location(0) position: vec3<f32>,
     @location(1) color: vec3<f32>,
@@ -34,9 +37,9 @@ struct Ray {
 }
 
 struct Block {
-    solid: bool,
+    opacity: f32,
     color: vec3<f32>,
-    refractive_index: f32,
+    refractive: bool,
 }
 
 struct HitInfo {
@@ -51,6 +54,7 @@ fn pcg_hash(input: u32) -> u32 {
     return (word >> 22u) ^ word;
 }
 
+/*
 // Refract assuming z axis is perpendicular.
 // `r` is new/old.
 fn refract_simple(dir: vec3<f32>, r: f32) -> vec3<f32> {
@@ -59,6 +63,7 @@ fn refract_simple(dir: vec3<f32>, r: f32) -> vec3<f32> {
     d.z = sqrt(extra) * sign(dir.z);
     return select(d, vec3<f32>(dir.x, dir.y, -dir.z), extra < 0.0);
 }
+*/
 
 // The maximum f32 value
 const MAX_F32 = 0x1.fffffep+127f;
@@ -67,10 +72,35 @@ fn rand(pos: vec2<i32>) -> i32 {
     return i32(pcg_hash(u32(pos.x + pos.y * 873))) / (2147483647 / 10) - 10;
 }
 
+/*
 // Get the block at a specific coordinate
 fn fetch_block(position: vec3<i32>) -> Block {
     let height: i32 = rand(position.xz);
     return Block(min(height, -2) >= position.y, vec3<f32>(1.0, 1.0, 1.0), select(1.0, 1.3, height > -2 && position.y <= height));
+}
+*/
+
+fn fetch_block(position: vec3<i32>) -> Block {
+    let world_size: vec3<u32> = textureDimensions(world_tex);
+    let texel: vec3<u32> = vec3<u32>(position + vec3<i32>(world_size/2));
+    let data: u32 = textureLoad(world_tex, texel, 0).r;
+    /*
+    4 bits per channel, but alpha uses the first bit for
+    refractivity, and the last 3 bits for opacity
+    */
+    let opacity: f32 = f32((data >> 16) & 7) / 7;
+    let refractive: bool = ((data >> 19) & 1) > 0;
+    let color: vec3<f32> = vec3<f32>(
+        f32((data >> 28) & 15) / 15,
+        f32((data >> 24) & 15) / 15,
+        f32((data >> 20) & 15) / 15
+    );
+    return Block(select(
+        -1.0, opacity,
+        (texel.x < world_size.x) &&
+        (texel.y < world_size.y) &&
+        (texel.z < world_size.z)
+    ), color, refractive);
 }
 
 // Simulate a ray taking one step
@@ -124,23 +154,26 @@ fn border(uv: vec2<f32>) -> bool {
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    var ray: Ray = Ray(vec3<f32>(0.0, 6.0, uniforms.time), normalize(vec3<f32>(in.uv.x, in.uv.y, 1.0)));
+    let world_size: vec3<u32> = textureDimensions(world_tex);
+    var ray: Ray = Ray(vec3<f32>(0.0, 0.0, uniforms.time), normalize(vec3<f32>(in.uv.x, in.uv.y, 1.0)));
     var color_left: f32 = 1.0;
     var color: vec3<f32> = vec3<f32>(0.0, 0.0, 0.0);
     var old_refract: f32 = 1.0;
-    for (var i: i32 = 0; i < 64; i++) {
+    for (var i: i32 = 0; i < 128; i++) {
         let hit_info: HitInfo = step(&ray);
         let block: Block = fetch_block(hit_info.position);
-        let refracted: vec3<f32> = refract(ray.direction, hit_info.normal, old_refract/block.refractive_index);
-        old_refract = block.refractive_index;
+        if (block.opacity == -1.0) {
+            break;
+        }
+        let refractive_index: f32 = select(1.0, 1.5, block.refractive);
+        let refracted: vec3<f32> = refract(ray.direction, hit_info.normal, old_refract/refractive_index);
+        old_refract = refractive_index;
         ray.direction = select(refracted, reflect(ray.direction, hit_info.normal), refracted == vec3<f32>(0.0, 0.0, 0.0));
         // ray.direction = select(ray.direction, reflect(ray.direction, hit_info.normal), block.refractive_index > 1.0);
         // color = select(color, block.color, block.solid && (!has_hit));
         // Use normal instead
-        let to_fill: f32 = select(select(0.0, color_left/6.0, block.refractive_index > 1.0), 1.0, block.solid);
-        let object_color: vec3<f32> = select(select(vec3(0.0), vec3(0.5), block.refractive_index > 1.0), hit_info.normal * -0.5f + 0.5f, block.solid);
-        color += to_fill * object_color * color_left;
-        color_left = color_left * (1.0 - to_fill);
+        color += block.opacity * block.color * color_left;
+        color_left = color_left * (1.0 - block.opacity);
     }
     // We have escaped the view distance.
     // Let's draw the sky now.

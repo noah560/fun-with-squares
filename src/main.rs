@@ -11,6 +11,8 @@ use fun_wgpu::{
     run,
     wgpu,
 };
+mod world;
+use world::*;
 
 use bytemuck;
 
@@ -39,6 +41,7 @@ struct FunWithSquares {
 
     time_passed: f32,
     last_frame: Instant,
+    world: LoadedWorld,
 }
 
 #[repr(C)]
@@ -167,26 +170,66 @@ impl App for FunWithSquares {
         let bind_group_layout = device.create_bind_group_layout(
             &wgpu::BindGroupLayoutDescriptor {
                 label: Some("Main Bind Group Layout"),
-                entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None
+                        },
+                        count: None,
                     },
-                    count: None,
-                }]
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Uint,
+                            view_dimension: wgpu::TextureViewDimension::D3,
+                            multisampled: false,
+                        },
+                        count: None
+                    }
+                ]
             }
         );
+
+        let mut world = LoadedWorld::new(256, 256, 64, None, &device, &queue)?;
+        world.apply_change(Change::Cuboid {
+            x: 0,
+            y: 0,
+            z: 0,
+            width: 256,
+            height: 16,
+            length: 256,
+            value: 0b0000_1111_0000_0_111,
+        });
+        world.apply_change(Change::Cuboid {
+            x: 0,
+            y: 48,
+            z: 0,
+            width: 256,
+            height: 16,
+            length: 256,
+            value: 0b0100_1111_0000_0_111,
+        });
+        world.update_texture(&queue);
+        let world_view = world.create_view();
 
         let bind_group = device.create_bind_group(
             &wgpu::BindGroupDescriptor {
                 layout: &bind_group_layout,
-                entries: &[wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: uniform_buffer.as_entire_binding()
-                }],
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: uniform_buffer.as_entire_binding()
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::TextureView(&world_view),
+                    }
+                ],
                 label: Some("Main bind group")
             }
         );
@@ -262,6 +305,7 @@ impl App for FunWithSquares {
 
             time_passed: 0.0,
             last_frame: Instant::now(),
+            world,
         })
     }
     // Events
