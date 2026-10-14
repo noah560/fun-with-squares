@@ -68,8 +68,8 @@ fn refract_simple(dir: vec3<f32>, r: f32) -> vec3<f32> {
 // The maximum f32 value
 const MAX_F32 = 0x1.fffffep+127f;
 
-fn rand(pos: vec2<i32>) -> i32 {
-    return i32(pcg_hash(u32(pos.x + pos.y * 873))) / (2147483647 / 10) - 10;
+fn rand(pos: vec3<i32>) -> u32 {
+    return pcg_hash(u32(pos.x + pos.y * 873 + pos.z * 93857));
 }
 
 /*
@@ -88,12 +88,14 @@ fn fetch_block(position: vec3<i32>) -> Block {
     4 bits per channel, but alpha uses the first bit for
     refractivity, and the last 3 bits for opacity
     */
-    let opacity: f32 = f32((data >> 16) & 7) / 7;
-    let refractive: bool = ((data >> 19) & 1) > 0;
+    let opacity: f32 = f32(data & 7) / 7.0;
+    let refractive: bool = ((data >> 3
+    ) & 1) > 0;
+    let rng: u32 = rand(position);
     let color: vec3<f32> = vec3<f32>(
-        f32((data >> 28) & 15) / 15,
-        f32((data >> 24) & 15) / 15,
-        f32((data >> 20) & 15) / 15
+        f32((data >> 12) & 15) / 16.0 + f32((rng >> 0) & 1) / 32.0,
+        f32((data >> 8) & 15) / 16.0 + f32((rng >> 1) & 1) / 32.0,
+        f32((data >> 4) & 15) / 16.0 + f32((rng >> 2) & 1) / 32.0
     );
     return Block(select(
         -1.0, opacity,
@@ -159,7 +161,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     var color_left: f32 = 1.0;
     var color: vec3<f32> = vec3<f32>(0.0, 0.0, 0.0);
     var old_refract: f32 = 1.0;
-    for (var i: i32 = 0; i < 128; i++) {
+    for (var i: i32 = 0; i < 64; i++) {
         let hit_info: HitInfo = step(&ray);
         let block: Block = fetch_block(hit_info.position);
         if (block.opacity == -1.0) {
