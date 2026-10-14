@@ -103,8 +103,8 @@ impl LoadedWorld {
     ) {
         match change {
             Change::Block { x, y, z, value } => {
-                if z >= 0 && z < self.length && y >= 0 && y < self.height {
-                    if x >= 0 && x < self.width {
+                if z < self.length && y < self.height {
+                    if x < self.width {
                         self.data[z * self.width * self.height + y * self.width + x] = value;
                     }
                 }
@@ -113,8 +113,8 @@ impl LoadedWorld {
                 for z in z..(z+length) {
                     for y in y..(y+height) {
                         for x in x..(x+width) {
-                            if z >= 0 && z < self.length && y >= 0 && y < self.height {
-                                if x >= 0 && x < self.width {
+                            if z < self.length && y < self.height {
+                                if x < self.width {
                                     self.data[z * self.width * self.height + y * self.width + x] = value;
                                 }
                             }
