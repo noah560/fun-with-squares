@@ -109,7 +109,11 @@ impl LoadedWorld {
                 for z in z..(z+length) {
                     for y in y..(y+height) {
                         for x in x..(x+width) {
-                            self.data[z * self.width * self.height + y * self.width + x] = value;
+                            if z >= 0 && z < self.length && y >= 0 && y < self.height {
+                                if x >= 0 && x < self.width {
+                                    self.data[z * self.width * self.height + y * self.width + x] = value;
+                                }
+                            }
                         }
                     }
                 }
