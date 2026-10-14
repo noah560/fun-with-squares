@@ -195,24 +195,15 @@ impl App for FunWithSquares {
             }
         );
 
-        let mut world = LoadedWorld::new(256, 256, 64, None, &device, &queue)?;
+        let mut world = LoadedWorld::new(64, 64, 16, None, &device, &queue)?;
         world.apply_change(Change::Cuboid {
             x: 0,
             y: 0,
             z: 0,
-            width: 256,
-            height: 16,
-            length: 256,
+            width: 64,
+            height: 8,
+            length: 64,
             value: 0b0000_1111_0000_0_111,
-        });
-        world.apply_change(Change::Cuboid {
-            x: 0,
-            y: 48,
-            z: 0,
-            width: 256,
-            height: 16,
-            length: 256,
-            value: 0b0100_1111_0000_0_111,
         });
         world.update_texture(&queue);
         let world_view = world.create_view();
