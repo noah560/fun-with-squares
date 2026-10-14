@@ -103,7 +103,11 @@ impl LoadedWorld {
     ) {
         match change {
             Change::Block { x, y, z, value } => {
-                self.data[z * self.width * self.height + y * self.width + x] = value;
+                if z >= 0 && z < self.length && y >= 0 && y < self.height {
+                    if x >= 0 && x < self.width {
+                        self.data[z * self.width * self.height + y * self.width + x] = value;
+                    }
+                }
             }
             Change::Cuboid { x, y, z, width, height, length, value } => {
                 for z in z..(z+length) {
