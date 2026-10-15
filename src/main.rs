@@ -203,8 +203,40 @@ impl App for FunWithSquares {
             width: 64,
             height: 8,
             length: 64,
-            value: 0b0000_1111_0000_0_111,
+            value: 0b0000_1100_0011_0_111,
         });
+        // Add trees!
+        for x in 0..16 {
+            for z in 0..16 {
+                world.apply_change(Change::Cuboid {
+                    x: x * 4,
+                    y: 11,
+                    z: z * 4,
+                    width: 3,
+                    height: 2, 
+                    length: 3,
+                    value: 0b0010_0110_0010_0_110,
+                });
+                world.apply_change(Change::Cuboid {
+                    x: x * 4 + 1,
+                    y: 12,
+                    z: z * 4 + 1,
+                    width: 1,
+                    height: 2, 
+                    length: 1,
+                    value: 0b0010_0110_0010_0_110,
+                });
+                world.apply_change(Change::Cuboid {
+                    x: x * 4 + 1,
+                    y: 8,
+                    z: z * 4 + 1,
+                    width: 1,
+                    height: 4, 
+                    length: 1,
+                    value: 0b1100_0010_0000_0_111,
+                });
+            }
+        }
         world.update_texture(&queue);
         let world_view = world.create_view();
 
