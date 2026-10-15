@@ -157,11 +157,11 @@ fn border(uv: vec2<f32>) -> bool {
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let world_size: vec3<u32> = textureDimensions(world_tex);
-    var ray: Ray = Ray(vec3<f32>(0.0, 2.0, uniforms.time), normalize(vec3<f32>(in.uv.x, in.uv.y, 1.0)));
+    var ray: Ray = Ray(vec3<f32>(-2.0, 6.0, uniforms.time-f32(world_size.z/2)), normalize(vec3<f32>(in.uv.x, in.uv.y, 1.0)));
     var color_left: f32 = 1.0;
     var color: vec3<f32> = vec3<f32>(0.0, 0.0, 0.0);
     var old_refract: f32 = 1.0;
-    for (var i: i32 = 0; i < 64; i++) {
+    for (var i: i32 = 0; i < 128; i++) {
         let hit_info: HitInfo = step(&ray);
         let block: Block = fetch_block(hit_info.position);
         if (block.opacity == -1.0) {
