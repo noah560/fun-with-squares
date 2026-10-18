@@ -10,27 +10,32 @@ use bytemuck;
 /// A change to a `LoadedWorld`
 pub enum Change {
     Block {
-        x: usize,
-        y: usize,
-        z: usize,
+        x: i32,
+        y: i32,
+        z: i32,
         value: u16
     },
     Cuboid {
-        x: usize,
-        y: usize,
-        z: usize,
-        width: usize,
-        height: usize,
-        length: usize,
+        x: i32,
+        y: i32,
+        z: i32,
+        width: i32,
+        height: i32,
+        length: i32,
         value: u16
     },
 }
 
 /// Loaded World Data
 pub struct LoadedWorld {
+    // World dimensions
     width: usize,
     length: usize,
     height: usize,
+    // Where the loaded area is centered
+    center_x: i32,
+    center_y: i32,
+    center_z: i32,
     data: Vec<u16>,
     // changes: Vec<(usize, usize, usize, usize, usize, usize, u16)>,
     texture: wgpu::Texture,
@@ -91,31 +96,80 @@ impl LoadedWorld {
             width,
             length,
             height,
+            center_x: 0,
+            center_y: 0,
+            center_z: 0,
             data,
             // changes: Vec::new(),
             texture,
         })
     }
     #[inline]
-    pub fn apply_change(
+    pub fn apply_change_relative(
         &mut self,
         change: Change,
     ) {
         match change {
             Change::Block { x, y, z, value } => {
-                if z < self.length && y < self.height {
-                    if x < self.width {
-                        self.data[z * self.width * self.height + y * self.width + x] = value;
+                let x1 = x as usize;
+                let y1 = y as usize;
+                let z1 = z as usize;
+                if z1 < self.length && y1 < self.height {
+                    if x1 < self.width {
+                        self.data[z1 * self.width * self.height + y1 * self.width + x1] = value;
                     }
                 }
             }
             Change::Cuboid { x, y, z, width, height, length, value } => {
-                for z in z..(z+length) {
-                    for y in y..(y+height) {
-                        for x in x..(x+width) {
-                            if z < self.length && y < self.height {
-                                if x < self.width {
-                                    self.data[z * self.width * self.height + y * self.width + x] = value;
+                let x1 = x as usize;
+                let y1 = y as usize;
+                let z1 = z as usize;
+                let width1 = width as usize;
+                let height1 = height as usize;
+                let length1 = length as usize;
+                for z1 in z1..(z1+length1) {
+                    for y1 in y1..(y1+height1) {
+                        for x1 in x1..(x1+width1) {
+                            if z1 < self.length && y1 < self.height {
+                                if x1 < self.width {
+                                    self.data[z1 * self.width * self.height + y1 * self.width + x1] = value;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    #[inline]
+    pub fn apply_change_absolute(
+        &mut self,
+        change: Change
+    ) {
+        match change {
+            Change::Block { x, y, z, value } => {
+                let x1 = (x - self.center_x + (self.width as i32)/2) as usize;
+                let y1 = (y - self.center_y + (self.height as i32)/2) as usize;
+                let z1 = (z - self.center_z + (self.length as i32)/2) as usize;
+                if z1 < self.length && y1 < self.height {
+                    if x1 < self.width {
+                        self.data[z1 * self.width * self.height + y1 * self.width + x1] = value;
+                    }
+                }
+            }
+            Change::Cuboid { x, y, z, width, height, length, value } => {
+                let x1 = (x - self.center_x + (self.width as i32)/2) as usize;
+                let y1 = (y - self.center_y + (self.height as i32)/2) as usize;
+                let z1 = (z - self.center_z + (self.length as i32)/2) as usize;
+                let width1 = width as usize;
+                let height1 = height as usize;
+                let length1 = length as usize;
+                for z1 in z1..(z1+length1) {
+                    for y1 in y1..(y1+height1) {
+                        for x1 in x1..(x1+width1) {
+                            if z1 < self.length && y1 < self.height {
+                                if x1 < self.width {
+                                    self.data[z1 * self.width * self.height + y1 * self.width + x1] = value;
                                 }
                             }
                         }
