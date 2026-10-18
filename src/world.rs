@@ -10,6 +10,9 @@ use bytemuck;
 /// An empty block
 const EMPTY: u16 = 0b0000_0000_0000_0_000;
 
+/// The side of a chunk
+pub const CHUNK_SIZE: i32 = 16;
+
 /// A change to a `LoadedWorld`
 pub enum Change {
     Block {
@@ -296,6 +299,26 @@ impl LoadedWorld {
             }
         }
     }
+    pub fn load_chunk(
+        &mut self,
+        x: i32,
+        y: i32,
+        z: i32,
+        chunk: &Chunk
+    ) {
+        for i in 0..CHUNK_SIZE {
+            for j in 0..CHUNK_SIZE {
+                for k in 0..CHUNK_SIZE {
+                    self.apply_change_relative(Change::Block {
+                        x: x + i,
+                        y: y + j,
+                        z: z + k,
+                        value: chunk.0[k * CHUNK_SIZE * CHUNK_SIZE + j * CHUNK_SIZE + i]
+                    });
+                }
+            }
+        }
+    }
     pub fn update_texture(
         &self,
         queue: &wgpu::Queue,
@@ -326,3 +349,5 @@ impl LoadedWorld {
         )
     }
 }
+
+pub struct Chunk([u16; CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE]);
