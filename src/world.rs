@@ -7,6 +7,9 @@ use crate::anyhow::{
 };
 use bytemuck;
 
+/// An empty block
+const EMPTY: u16 = 0b0000_0000_0000_0_000;
+
 /// A change to a `LoadedWorld`
 pub enum Change {
     Block {
@@ -105,6 +108,18 @@ impl LoadedWorld {
         })
     }
     #[inline]
+    pub fn get_index_relative(x: i32, y: i32, z: i32) -> usize {
+        ((z + (self.length as i32)/2) as usize) * self.width * self.height +
+        ((y + (self.height as i32)/2) as usize) * self.width +
+        ((x + (self.width as i32)/2) as usize)
+    }
+    #[inline]
+    pub fn get_index_basic(x: i32, y: i32, z: i32) -> usize {
+        (z as usize) * self.width * self.height +
+        (y as usize) * self.width +
+        (x as usize)
+    }
+    #[inline]
     pub fn apply_change_relative(
         &mut self,
         change: Change,
@@ -173,6 +188,90 @@ impl LoadedWorld {
                                 }
                             }
                         }
+                    }
+                }
+            }
+        }
+    }
+    pub fn translate_x(amount: i32) {
+        if amount == 0 {
+            return;
+        } else if amount < 0 {
+            let amount = -amount;
+            for a in 0..self.height {
+                for b in 0..self.length {
+                    for x in 0..(self.width - amount) {
+                        self.data[self.get_index_basic(x, a, b)] = self.data[self.get_index_basic(x + amount, a, b)];
+                    }
+                    for x in (self.width - amount)..self.width {
+                        self.data[self.get_index_basic(x, a, b)] = EMPTY;
+                    }
+                }
+            }
+        } else {
+            for a in 0..self.height {
+                for b in 0..self.length {
+                    for x in (amount..self.width).rev() {
+                        self.data[self.get_index_basic(x, a, b)] = self.data[self.get_index_basic(x - amount, a, b)];
+                    }
+                    for x in 0..amount {
+                        self.data[self.get_index_basic(x, a, b)] = EMPTY;
+                    }
+                }
+            }
+        }
+    }
+    pub fn translate_y(amount: i32) {
+        if amount == 0 {
+            return;
+        } else if amount < 0 {
+            let amount = -amount;
+            for a in 0..self.width {
+                for b in 0..self.length {
+                    for y in 0..(self.height - amount) {
+                        self.data[self.get_index_basic(a, y, b)] = self.data[self.get_index_basic(a, y + amount, b)];
+                    }
+                    for y in (self.height - amount)..self.width {
+                        self.data[self.get_index_basic(a, y, b)] = EMPTY;
+                    }
+                }
+            }
+        } else {
+            for a in 0..self.width {
+                for b in 0..self.length {
+                    for y in (amount..self.height).rev() {
+                        self.data[self.get_index_basic(a, y, b)] = self.data[self.get_index_basic(a, y - amount, b)];
+                    }
+                    for y in 0..amount {
+                        self.data[self.get_index_basic(a, y, b)] = EMPTY;
+                    }
+                }
+            }
+        }
+    }
+    pub fn translate_z(amount: i32) {
+        if amount == 0 {
+            return;
+        } else if amount < 0 {
+            let amount = -amount;
+            for a in 0..self.width {
+                for b in 0..self.height {
+                    for z in 0..(self.length - amount) {
+                        self.data[self.get_index_basic(a, b, z)] = self.data[self.get_index_basic(a, b, z + amount)];
+                    }
+                    for z in (self.length - amount)..self.length {
+                        self.data[self.get_index_basic(a, b, z)] = EMPTY;
+                    }
+                }
+            }
+        } else {
+            for a in 0..self.width {
+                for b in 0..self.height {
+                    for z in (amount..self.length).rev() {
+                        self.data[self.get_index_basic(a, b, z)] = self.data[self.get_index_basic(a, b, z - amount)];
+                    }
+                    for z in 0..amount {
+                        self.data[self.get_index_basic(a, b, z)] = EMPTY;
                     }
                 }
             }
