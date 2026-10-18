@@ -240,7 +240,7 @@ impl LoadedWorld {
                         let ib = self.get_index_basic(a, y + amount, b);
                         self.data[ia] = self.data[ib];
                     }
-                    for y in (self.iheight - amount)..self.iwidth {
+                    for y in (self.iheight - amount)..self.iheight {
                         let ia = self.get_index_basic(a, y, b);
                         self.data[ia] = EMPTY;
                     }
