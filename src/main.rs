@@ -196,10 +196,10 @@ impl App for FunWithSquares {
         );
 
         let mut world = LoadedWorld::new(256, 256, 64, None, &device, &queue)?;
-        world.apply_change(Change::Cuboid {
-            x: 0,
-            y: 0,
-            z: 0,
+        world.apply_change_relative(Change::Cuboid {
+            x: -128,
+            y: -32,
+            z: -128,
             width: 256,
             height: 32,
             length: 256,
@@ -208,28 +208,28 @@ impl App for FunWithSquares {
         // Add trees!
         for x in 0..16 {
             for z in 0..16 {
-                world.apply_change(Change::Cuboid {
-                    x: x * 16,
-                    y: 44,
-                    z: z * 16,
+                world.apply_change_relative(Change::Cuboid {
+                    x: x * 16 - 128,
+                    y: 44 - 32,
+                    z: z * 16 - 128,
                     width: 12,
                     height: 4, 
                     length: 12,
                     value: 0b0010_0110_0010_0_110,
                 });
-                world.apply_change(Change::Cuboid {
-                    x: x * 16 + 4,
-                    y: 48,
-                    z: z * 16 + 4,
+                world.apply_change_relative(Change::Cuboid {
+                    x: x * 16 + 4 - 128,
+                    y: 48 - 32,
+                    z: z * 16 + 4 - 128,
                     width: 4,
                     height: 8, 
                     length: 4,
                     value: 0b0010_0110_0010_0_110,
                 });
-                world.apply_change(Change::Cuboid {
-                    x: x * 16 + 4,
-                    y: 32,
-                    z: z * 16 + 4,
+                world.apply_change_relative(Change::Cuboid {
+                    x: x * 16 + 4 - 128,
+                    y: 32 - 32,
+                    z: z * 16 + 4 - 128,
                     width: 1,
                     height: 16, 
                     length: 1,

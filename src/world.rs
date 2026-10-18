@@ -35,6 +35,9 @@ pub struct LoadedWorld {
     width: usize,
     length: usize,
     height: usize,
+    iwidth: i32,
+    ilength: i32,
+    iheight: i32,
     // Where the loaded area is centered
     center_x: i32,
     center_y: i32,
@@ -99,6 +102,9 @@ impl LoadedWorld {
             width,
             length,
             height,
+            iwidth: width as i32,
+            ilength: length as i32,
+            iheight: height as i32,
             center_x: 0,
             center_y: 0,
             center_z: 0,
@@ -108,13 +114,13 @@ impl LoadedWorld {
         })
     }
     #[inline]
-    pub fn get_index_relative(x: i32, y: i32, z: i32) -> usize {
-        ((z + (self.length as i32)/2) as usize) * self.width * self.height +
-        ((y + (self.height as i32)/2) as usize) * self.width +
-        ((x + (self.width as i32)/2) as usize)
+    pub fn get_index_relative(&self, x: i32, y: i32, z: i32) -> usize {
+        ((z + self.ilength/2) as usize) * self.width * self.height +
+        ((y + self.iheight/2) as usize) * self.width +
+        ((x + self.iwidth/2) as usize)
     }
     #[inline]
-    pub fn get_index_basic(x: i32, y: i32, z: i32) -> usize {
+    pub fn get_index_basic(&self, x: i32, y: i32, z: i32) -> usize {
         (z as usize) * self.width * self.height +
         (y as usize) * self.width +
         (x as usize)
@@ -126,30 +132,24 @@ impl LoadedWorld {
     ) {
         match change {
             Change::Block { x, y, z, value } => {
-                let x1 = x as usize;
-                let y1 = y as usize;
-                let z1 = z as usize;
-                if z1 < self.length && y1 < self.height {
-                    if x1 < self.width {
-                        self.data[z1 * self.width * self.height + y1 * self.width + x1] = value;
-                    }
-                }
+                if x < -self.iwidth/2 || x >= self.iwidth/2 {return;}
+                if y < -self.iheight/2 || y >= self.iheight/2 {return;}
+                if z < -self.ilength/2 || z >= self.ilength/2 {return;}
+                let x1 = (x + self.iwidth/2) as usize;
+                let y1 = (y + self.iheight/2) as usize;
+                let z1 = (z + self.ilength/2) as usize;
+                self.data[z1 * self.width * self.height + y1 * self.width + x1] = value;
             }
             Change::Cuboid { x, y, z, width, height, length, value } => {
-                let x1 = x as usize;
-                let y1 = y as usize;
-                let z1 = z as usize;
-                let width1 = width as usize;
-                let height1 = height as usize;
-                let length1 = length as usize;
-                for z1 in z1..(z1+length1) {
-                    for y1 in y1..(y1+height1) {
-                        for x1 in x1..(x1+width1) {
-                            if z1 < self.length && y1 < self.height {
-                                if x1 < self.width {
-                                    self.data[z1 * self.width * self.height + y1 * self.width + x1] = value;
-                                }
-                            }
+                for i in 0..width {
+                    for j in 0..height {
+                        for k in 0..length {
+                            self.apply_change_relative(Change::Block {
+                                x: x + i,
+                                y: y + j,
+                                z: z + k,
+                                value
+                            });
                         }
                     }
                 }
@@ -163,9 +163,15 @@ impl LoadedWorld {
     ) {
         match change {
             Change::Block { x, y, z, value } => {
-                let x1 = (x - self.center_x + (self.width as i32)/2) as usize;
-                let y1 = (y - self.center_y + (self.height as i32)/2) as usize;
-                let z1 = (z - self.center_z + (self.length as i32)/2) as usize;
+                let x1 = (x - self.center_x + self.iwidth/2);
+                let y1 = (y - self.center_y + self.iheight/2);
+                let z1 = (z - self.center_z + self.ilength/2);
+                if x1 < -self.iwidth/2 || x1 >= self.iwidth/2 {return;}
+                if y1 < -self.iheight/2 || y1 >= self.iheight/2 {return;}
+                if z1 < -self.ilength/2 || z1 >= self.ilength/2 {return;}
+                let x1 = x1 as usize;
+                let y1 = y1 as usize;
+                let z1 = z1 as usize;
                 if z1 < self.length && y1 < self.height {
                     if x1 < self.width {
                         self.data[z1 * self.width * self.height + y1 * self.width + x1] = value;
@@ -173,105 +179,118 @@ impl LoadedWorld {
                 }
             }
             Change::Cuboid { x, y, z, width, height, length, value } => {
-                let x1 = (x - self.center_x + (self.width as i32)/2) as usize;
-                let y1 = (y - self.center_y + (self.height as i32)/2) as usize;
-                let z1 = (z - self.center_z + (self.length as i32)/2) as usize;
-                let width1 = width as usize;
-                let height1 = height as usize;
-                let length1 = length as usize;
-                for z1 in z1..(z1+length1) {
-                    for y1 in y1..(y1+height1) {
-                        for x1 in x1..(x1+width1) {
-                            if z1 < self.length && y1 < self.height {
-                                if x1 < self.width {
-                                    self.data[z1 * self.width * self.height + y1 * self.width + x1] = value;
-                                }
-                            }
+                for i in 0..width {
+                    for j in 0..height {
+                        for k in 0..length {
+                            self.apply_change_absolute(Change::Block {
+                                x: x + i,
+                                y: y + j,
+                                z: z + k,
+                                value
+                            });
                         }
                     }
                 }
             }
         }
     }
-    pub fn translate_x(amount: i32) {
+    pub fn translate_x(&mut self, amount: i32) {
         if amount == 0 {
             return;
         } else if amount < 0 {
             let amount = -amount;
-            for a in 0..self.height {
-                for b in 0..self.length {
-                    for x in 0..(self.width - amount) {
-                        self.data[self.get_index_basic(x, a, b)] = self.data[self.get_index_basic(x + amount, a, b)];
+            for a in 0..self.iheight {
+                for b in 0..self.ilength {
+                    for x in 0..(self.iwidth - amount) {
+                        let ia = self.get_index_basic(x, a, b);
+                        let ib = self.get_index_basic(x + amount, a, b);
+                        self.data[ia] = self.data[ib];
                     }
-                    for x in (self.width - amount)..self.width {
-                        self.data[self.get_index_basic(x, a, b)] = EMPTY;
+                    for x in (self.iwidth - amount)..self.iwidth {
+                        let ia = self.get_index_basic(x, a, b);
+                        self.data[ia] = EMPTY;
                     }
                 }
             }
         } else {
-            for a in 0..self.height {
-                for b in 0..self.length {
-                    for x in (amount..self.width).rev() {
-                        self.data[self.get_index_basic(x, a, b)] = self.data[self.get_index_basic(x - amount, a, b)];
+            for a in 0..self.iheight {
+                for b in 0..self.ilength {
+                    for x in (amount..self.iwidth).rev() {
+                        let ia = self.get_index_basic(x, a, b);
+                        let ib = self.get_index_basic(x - amount, a, b);
+                        self.data[ia] = self.data[ib];
                     }
                     for x in 0..amount {
-                        self.data[self.get_index_basic(x, a, b)] = EMPTY;
+                        let ia = self.get_index_basic(x, a, b);
+                        self.data[ia] = EMPTY;
                     }
                 }
             }
         }
     }
-    pub fn translate_y(amount: i32) {
+    pub fn translate_y(&mut self, amount: i32) {
         if amount == 0 {
             return;
         } else if amount < 0 {
             let amount = -amount;
-            for a in 0..self.width {
-                for b in 0..self.length {
-                    for y in 0..(self.height - amount) {
-                        self.data[self.get_index_basic(a, y, b)] = self.data[self.get_index_basic(a, y + amount, b)];
+            for a in 0..self.iwidth {
+                for b in 0..self.ilength {
+                    for y in 0..(self.iheight - amount) {
+                        let ia = self.get_index_basic(a, y, b);
+                        let ib = self.get_index_basic(a, y + amount, b);
+                        self.data[ia] = self.data[ib];
                     }
-                    for y in (self.height - amount)..self.width {
-                        self.data[self.get_index_basic(a, y, b)] = EMPTY;
+                    for y in (self.iheight - amount)..self.iwidth {
+                        let ia = self.get_index_basic(a, y, b);
+                        self.data[ia] = EMPTY;
                     }
                 }
             }
         } else {
-            for a in 0..self.width {
-                for b in 0..self.length {
-                    for y in (amount..self.height).rev() {
-                        self.data[self.get_index_basic(a, y, b)] = self.data[self.get_index_basic(a, y - amount, b)];
+            for a in 0..self.iwidth {
+                for b in 0..self.ilength {
+                    for y in (amount..self.iheight).rev() {
+                        let ia = self.get_index_basic(a, y, b);
+                        let ib = self.get_index_basic(a, y - amount, b);
+                        self.data[ia] = self.data[ib];
                     }
                     for y in 0..amount {
-                        self.data[self.get_index_basic(a, y, b)] = EMPTY;
+                        let ia = self.get_index_basic(a, y, b);
+                        self.data[ia] = EMPTY;
                     }
                 }
             }
         }
     }
-    pub fn translate_z(amount: i32) {
+    pub fn translate_z(&mut self, amount: i32) {
         if amount == 0 {
             return;
         } else if amount < 0 {
             let amount = -amount;
-            for a in 0..self.width {
-                for b in 0..self.height {
-                    for z in 0..(self.length - amount) {
-                        self.data[self.get_index_basic(a, b, z)] = self.data[self.get_index_basic(a, b, z + amount)];
+            for a in 0..self.iwidth {
+                for b in 0..self.iheight {
+                    for z in 0..(self.ilength - amount) {
+                        let ia = self.get_index_basic(a, b, z);
+                        let ib = self.get_index_basic(a, b, z + amount);
+                        self.data[ia] = self.data[ib];
                     }
-                    for z in (self.length - amount)..self.length {
-                        self.data[self.get_index_basic(a, b, z)] = EMPTY;
+                    for z in (self.ilength - amount)..self.ilength {
+                        let ia = self.get_index_basic(a, b, z);
+                        self.data[ia] = EMPTY;
                     }
                 }
             }
         } else {
-            for a in 0..self.width {
-                for b in 0..self.height {
-                    for z in (amount..self.length).rev() {
-                        self.data[self.get_index_basic(a, b, z)] = self.data[self.get_index_basic(a, b, z - amount)];
+            for a in 0..self.iwidth {
+                for b in 0..self.iheight {
+                    for z in (amount..self.ilength).rev() {
+                        let ia = self.get_index_basic(a, b, z);
+                        let ib = self.get_index_basic(a, b, z - amount);
+                        self.data[ia] = self.data[ib];
                     }
                     for z in 0..amount {
-                        self.data[self.get_index_basic(a, b, z)] = EMPTY;
+                        let ia = self.get_index_basic(a, b, z);
+                        self.data[ia] = EMPTY;
                     }
                 }
             }
