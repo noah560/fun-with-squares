@@ -432,9 +432,9 @@ impl App for FunWithSquares {
                 x: self.player.x % (CHUNK_SIZE as f32),
                 y: self.player.y % (CHUNK_SIZE as f32),
                 z: self.player.z % (CHUNK_SIZE as f32),
-                offset_x: (self.player.x/(CHUNK_SIZE as f32)).floor() as i32 * CHUNK_SIZE,
-                offset_y: (self.player.x/(CHUNK_SIZE as f32)).floor() as i32 * CHUNK_SIZE,
-                offset_z: (self.player.x/(CHUNK_SIZE as f32)).floor() as i32 * CHUNK_SIZE
+                offset_x: ((self.player.x/(CHUNK_SIZE as f32)).floor() as i32) * CHUNK_SIZE,
+                offset_y: ((self.player.y/(CHUNK_SIZE as f32)).floor() as i32) * CHUNK_SIZE,
+                offset_z: ((self.player.z/(CHUNK_SIZE as f32)).floor() as i32) * CHUNK_SIZE
             }]));
             let mut render_pass = encoder.begin_render_pass(
                 &wgpu::RenderPassDescriptor {

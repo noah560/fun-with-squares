@@ -102,6 +102,14 @@ fn fetch_block(position: vec3<i32>) -> Block {
         f32((data >> 8) & 15) / 16.0 + f32((rng >> 1) & 1) / 32.0,
         f32((data >> 4) & 15) / 16.0 + f32((rng >> 2) & 1) / 32.0
     );
+    /*
+    // For debugging
+    let color: vec3<f32> = vec3<f32>(
+        f32(uniforms.offset_x)/256.0,
+        f32(uniforms.offset_y)/256.0,
+        f32(uniforms.offset_z)/256.0
+    );
+    */
     return Block(select(
         -1.0, opacity,
         (texel.x < world_size.x) &&
