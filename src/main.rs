@@ -13,13 +13,20 @@ use fun_wgpu::{
 };
 mod world;
 use world::*;
+mod player;
+use player::*;
 
 use bytemuck;
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct Uniforms {
-    time: f32,
+    x: f32,
+    y: f32,
+    z: f32,
+    offset_x: i32,
+    offset_y: i32,
+    offset_z: i32
 }
 
 struct FunWithSquares {
@@ -42,6 +49,8 @@ struct FunWithSquares {
     time_passed: f32,
     last_frame: Instant,
     world: LoadedWorld,
+    player: Player,
+    dt: f32,
 }
 
 #[repr(C)]
@@ -161,7 +170,12 @@ impl App for FunWithSquares {
             &wgpu::util::BufferInitDescriptor {
                 label: Some("Uniform Buffer"),
                 contents: bytemuck::cast_slice(&[Uniforms {
-                    time: 0.0
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                    offset_x: 0,
+                    offset_y: 0,
+                    offset_z: 0,
                 }]),
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             }
@@ -237,6 +251,15 @@ impl App for FunWithSquares {
                 });
             }
         }
+        world.apply_change_relative(Change::Cuboid {
+            x: -1,
+            y: 0,
+            z: 48,
+            width: 2,
+            height: 2,
+            length: 1,
+            value: 0b1111_0000_0000_0_111
+        });
         world.update_texture(&queue);
         let world_view = world.create_view();
 
@@ -308,6 +331,8 @@ impl App for FunWithSquares {
                 }
             );
 
+        let player = Player::new(0.0, 4.0, 0.0);
+
         window.set_title("Fun with Squares!");
         Ok(Self {
             window,
@@ -329,6 +354,8 @@ impl App for FunWithSquares {
             time_passed: 0.0,
             last_frame: Instant::now(),
             world,
+            player,
+            dt: 0.0
         })
     }
     // Events
@@ -345,15 +372,38 @@ impl App for FunWithSquares {
     fn on_mouse(&mut self, _button: MouseButton, _state: bool) {}
     // Main loop
     fn get_fps(&self) -> u64 {30}
-    fn update(&mut self) {}
+    fn update(&mut self) {
+        let old_z = self.player.z;
+        self.player.z += self.dt * 4.0;
+        // self.player.y += self.dt;
+        // self.player.x += self.dt;
+        if (old_z as i32)/CHUNK_SIZE < (self.player.z as i32)/CHUNK_SIZE {
+            self.world.translate_z(-CHUNK_SIZE);
+            self.world.apply_change_relative(Change::Cuboid {
+                x: -128,
+                y: -32,
+                z: -128,
+                width: 256,
+                height: 32,
+                length: 256,
+                value: 0b0000_1100_0011_0_111,
+            });
+            self.world.update_texture(&self.queue);
+        }
+    }
     fn render(&mut self) -> anyhow::Result<()> {
         let now = Instant::now();
         let dt = (now - self.last_frame).as_secs_f32().min(1.0);
         self.last_frame = now;
         self.time_passed += dt;
+        self.dt = dt;
+
         if !self.is_surface_configured {
             return Ok(());
         }
+
+        self.update();
+
         let output = match self.surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(surface_texture) => surface_texture,
             wgpu::CurrentSurfaceTexture::Suboptimal(surface_texture) => surface_texture,
@@ -379,7 +429,12 @@ impl App for FunWithSquares {
 
         {
             self.queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[Uniforms {
-                time: self.time_passed
+                x: self.player.x % (CHUNK_SIZE as f32),
+                y: self.player.y % (CHUNK_SIZE as f32),
+                z: self.player.z % (CHUNK_SIZE as f32),
+                offset_x: (self.player.x/(CHUNK_SIZE as f32)).floor() as i32 * CHUNK_SIZE,
+                offset_y: (self.player.x/(CHUNK_SIZE as f32)).floor() as i32 * CHUNK_SIZE,
+                offset_z: (self.player.x/(CHUNK_SIZE as f32)).floor() as i32 * CHUNK_SIZE
             }]));
             let mut render_pass = encoder.begin_render_pass(
                 &wgpu::RenderPassDescriptor {

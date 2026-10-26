@@ -1,5 +1,10 @@
 struct Uniforms {
-    time: f32,
+    x: f32,
+    y: f32,
+    z: f32,
+    offset_x: i32,
+    offset_y: i32,
+    offset_z: i32
 }
 
 @group(0) @binding(0)
@@ -91,7 +96,7 @@ fn fetch_block(position: vec3<i32>) -> Block {
     let opacity: f32 = f32(data & 7) / 7.0;
     let refractive: bool = ((data >> 3
     ) & 1) > 0;
-    let rng: u32 = rand(position);
+    let rng: u32 = rand(position + vec3<i32>(uniforms.offset_x, uniforms.offset_y, uniforms.offset_z));
     let color: vec3<f32> = vec3<f32>(
         f32((data >> 12) & 15) / 16.0 + f32((rng >> 0) & 1) / 32.0,
         f32((data >> 8) & 15) / 16.0 + f32((rng >> 1) & 1) / 32.0,
@@ -157,7 +162,7 @@ fn border(uv: vec2<f32>) -> bool {
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let world_size: vec3<u32> = textureDimensions(world_tex);
-    var ray: Ray = Ray(vec3<f32>(-2.0, 6.0, uniforms.time-f32(world_size.z/2)), normalize(vec3<f32>(in.uv.x, in.uv.y, 1.0)));
+    var ray: Ray = Ray(vec3<f32>(uniforms.x/*-f32(world_size.z/2)*/, uniforms.y/*-f32(world_size.y/2)*/, uniforms.z/*-f32(world_size.z/2)*/), normalize(vec3<f32>(in.uv.x, in.uv.y, 1.0)));
     var color_left: f32 = 1.0;
     var color: vec3<f32> = vec3<f32>(0.0, 0.0, 0.0);
     var old_refract: f32 = 1.0;

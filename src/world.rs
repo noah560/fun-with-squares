@@ -10,8 +10,11 @@ use bytemuck;
 /// An empty block
 const EMPTY: u16 = 0b0000_0000_0000_0_000;
 
-/// The side of a chunk
+/// The side length of a chunk
 pub const CHUNK_SIZE: i32 = 16;
+
+/// The side length of a chunk as a usize
+pub const CHUNK_SIZE_USIZE: usize = CHUNK_SIZE as usize;
 
 /// A change to a `LoadedWorld`
 pub enum Change {
@@ -166,9 +169,9 @@ impl LoadedWorld {
     ) {
         match change {
             Change::Block { x, y, z, value } => {
-                let x1 = (x - self.center_x + self.iwidth/2);
-                let y1 = (y - self.center_y + self.iheight/2);
-                let z1 = (z - self.center_z + self.ilength/2);
+                let x1 = x - self.center_x + self.iwidth/2;
+                let y1 = y - self.center_y + self.iheight/2;
+                let z1 = z - self.center_z + self.ilength/2;
                 if x1 < -self.iwidth/2 || x1 >= self.iwidth/2 {return;}
                 if y1 < -self.iheight/2 || y1 >= self.iheight/2 {return;}
                 if z1 < -self.ilength/2 || z1 >= self.ilength/2 {return;}
@@ -306,14 +309,14 @@ impl LoadedWorld {
         z: i32,
         chunk: &Chunk
     ) {
-        for i in 0..CHUNK_SIZE {
-            for j in 0..CHUNK_SIZE {
-                for k in 0..CHUNK_SIZE {
+        for i in 0..CHUNK_SIZE_USIZE {
+            for j in 0..CHUNK_SIZE_USIZE {
+                for k in 0..CHUNK_SIZE_USIZE {
                     self.apply_change_relative(Change::Block {
-                        x: x + i,
-                        y: y + j,
-                        z: z + k,
-                        value: chunk.0[k * CHUNK_SIZE * CHUNK_SIZE + j * CHUNK_SIZE + i]
+                        x: x + (i as i32),
+                        y: y + (j as i32),
+                        z: z + (k as i32),
+                        value: chunk.0[k * CHUNK_SIZE_USIZE * CHUNK_SIZE_USIZE + j * CHUNK_SIZE_USIZE + i]
                     });
                 }
             }
@@ -350,4 +353,4 @@ impl LoadedWorld {
     }
 }
 
-pub struct Chunk([u16; CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE]);
+pub struct Chunk([u16; CHUNK_SIZE_USIZE * CHUNK_SIZE_USIZE * CHUNK_SIZE_USIZE]);
